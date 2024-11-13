@@ -14,9 +14,21 @@ export default function App() {
 
   const addTask = () => {
     if (task.trim()) {
-      setTasks([...tasks, { id: Date.now().toString(), text: task }]);
+      setTasks([...tasks, { id: Date.now().toString(), text: task, completed: false, completedAt: null }]);
       setTask('');
     }
+  };
+
+  const toggleCompleteTask = (taskId) => {
+    setTasks(tasks.map((item) =>
+      item.id === taskId
+        ? {
+            ...item,
+            completed: !item.completed,
+            completedAt: !item.completed ? new Date().toLocaleString() : null, 
+          }
+        : item
+    ));
   };
 
   const deleteTask = (taskId) => {
@@ -41,12 +53,19 @@ export default function App() {
       <FlatList
         data={tasks}
         renderItem={({ item }) => (
-          <View style={styles.taskContainer}>
-            <Text style={styles.taskText}>{item.text}</Text>
-            <TouchableOpacity onPress={() => deleteTask(item.id)}>
-              <Text style={styles.deleteButton}>X</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity onPress={() => toggleCompleteTask(item.id)}>
+            <View style={[styles.taskContainer, item.completed && styles.completedTask]}>
+              <Text style={[styles.taskText, item.completed && styles.completedText]}>
+                {item.text}
+              </Text>
+              {item.completed && item.completedAt && (
+                <Text style={styles.completedAtText}>Completed at: {item.completedAt}</Text>
+              )}
+              <TouchableOpacity onPress={() => deleteTask(item.id)}>
+                <Text style={styles.deleteButton}>X</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
         )}
         keyExtractor={(item) => item.id}
       />
@@ -57,15 +76,16 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f8f9fa',
     paddingTop: 50,
     paddingHorizontal: 20,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#1d3557',
     marginBottom: 20,
+    textAlign: 'center',
   },
   inputContainer: {
     flexDirection: 'row',
@@ -76,13 +96,14 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     height: 40,
-    borderColor: '#ddd',
+    borderColor: '#ced4da',
     borderWidth: 1,
     paddingHorizontal: 10,
     borderRadius: 5,
+    backgroundColor: '#ffffff',
   },
   addButton: {
-    backgroundColor: '#5C5CFF',
+    backgroundColor: '#457b9d',
     height: 40,
     width: 40,
     alignItems: 'center',
@@ -99,16 +120,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 10,
-    borderBottomColor: '#ddd',
+    padding: 12,
+    borderBottomColor: '#dee2e6',
     borderBottomWidth: 1,
   },
   taskText: {
-    fontSize: 16,
-    color: '#333',
+    fontSize: 18,
+    color: '#343a40',
+  },
+  completedTask: {
+    backgroundColor: '#d4edda', // Light green background for completed tasks
+  },
+  completedText: {
+    color: '#28a745', // Darker green for the text
+  },
+  completedAtText: {
+    fontSize: 12,
+    color: '#6c757d',
+    marginTop: 5,
   },
   deleteButton: {
-    color: '#FF5C5C',
+    color: '#e63946',
     fontWeight: 'bold',
     fontSize: 18,
   },
