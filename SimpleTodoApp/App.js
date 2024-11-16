@@ -5,7 +5,8 @@ import {
   TextInput,
   View,
   FlatList,
-  TouchableOpacity
+  TouchableOpacity,
+  Animated,
 } from 'react-native';
 
 export default function App() {
@@ -13,13 +14,30 @@ export default function App() {
   const [tasks, setTasks] = useState([]); // State to store tasks
   const [editingTaskId, setEditingTaskId] = useState(null); // Task ID for the task being edited
 
+  // Add task with animation states
   const addTask = () => {
     if (task.trim()) {
-      setTasks([...tasks, { id: Date.now().toString(), text: task, completed: false, completedAt: null }]);
+      const newTask = {
+        id: Date.now().toString(),
+        text: task,
+        completed: false,
+        completedAt: null,
+        slideAnim: new Animated.Value(300), // New slide animation for this task
+        rotateAnim: new Animated.Value(0),  // New rotation animation for this task
+      };
+
+      Animated.spring(newTask.slideAnim, {
+        toValue: 0,
+        friction: 5,
+        useNativeDriver: true,
+      }).start();
+
+      setTasks([...tasks, newTask]);
       setTask(''); // Clear the input after adding task
     }
   };
 
+  // Toggle completion state of a task
   const toggleCompleteTask = (taskId) => {
     setTasks(tasks.map((item) =>
       item.id === taskId
@@ -32,20 +50,40 @@ export default function App() {
     ));
   };
 
+  // Delete task with animation
   const deleteTask = (taskId) => {
-    setTasks(tasks.filter((item) => item.id !== taskId));
+    const updatedTasks = tasks.filter((item) => item.id !== taskId);
+    const taskToDelete = tasks.find((item) => item.id === taskId);
+
+    Animated.timing(taskToDelete.slideAnim, {
+      toValue: 300,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => {
+      setTasks(updatedTasks); // Update the state after the animation completes
+    });
   };
 
-  // Start editing task - This is Task C: Edit Tasks
+  // Start editing task
   const startEditing = (taskId) => {
     const taskToEdit = tasks.find((task) => task.id === taskId);
     setEditingTaskId(taskId); // Mark the task as being edited
     setTask(taskToEdit.text); // Set the input field to the task's current text
   };
 
-  // Update task after editing - This is Task C: Edit Tasks
+  // Update task after editing
   const updateTask = () => {
     if (task.trim()) {
+      const taskToUpdate = tasks.find((item) => item.id === editingTaskId);
+
+      Animated.timing(taskToUpdate.rotateAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }).start(() => {
+        taskToUpdate.rotateAnim.setValue(0); // Reset after rotation
+      });
+
       setTasks(tasks.map((item) =>
         item.id === editingTaskId
           ? { ...item, text: task } // Update task text
@@ -78,7 +116,25 @@ export default function App() {
         data={tasks}
         renderItem={({ item }) => (
           <TouchableOpacity onPress={() => toggleCompleteTask(item.id)}>
-            <View style={[styles.taskContainer, item.completed && styles.completedTask]}>
+            <Animated.View
+              style={[
+                styles.taskContainer,
+                item.completed && styles.completedTask,
+                {
+                  transform: [
+                    {
+                      translateX: item.slideAnim, // Use individual slideAnim
+                    },
+                    {
+                      rotate: item.rotateAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: ['0deg', '360deg'],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            >
               <Text style={[styles.taskText, item.completed && styles.completedText]}>
                 {item.text}
               </Text>
@@ -92,7 +148,7 @@ export default function App() {
               <TouchableOpacity onPress={() => startEditing(item.id)}>
                 <Text style={styles.editButton}>Edit</Text>
               </TouchableOpacity>
-            </View>
+            </Animated.View>
           </TouchableOpacity>
         )}
         keyExtractor={(item) => item.id}
@@ -104,14 +160,14 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5', // Light background for a professional feel
+    backgroundColor: '#F5F5F5',
     paddingTop: 50,
     paddingHorizontal: 20,
   },
   title: {
     fontSize: 28,
     fontWeight: '600',
-    color: '#2C3E50', // Deep professional blue
+    color: '#2C3E50',
     marginBottom: 20,
     textAlign: 'center',
     letterSpacing: 1,
@@ -122,7 +178,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
     borderRadius: 8,
-    backgroundColor: '#FFFFFF', // Clean background for input
+    backgroundColor: '#FFFFFF',
     shadowColor: '#BDC3C7',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
@@ -141,7 +197,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ecf0f1',
   },
   addButton: {
-    backgroundColor: '#2980B9', // Professional blue
+    backgroundColor: '#2980B9',
     height: 40,
     width: 40,
     alignItems: 'center',
@@ -171,11 +227,11 @@ const styles = StyleSheet.create({
     color: '#2C3E50',
   },
   completedTask: {
-    backgroundColor: '#D5F5E3', // Light green for completed tasks
+    backgroundColor: '#D5F5E3',
   },
   completedText: {
     textDecorationLine: 'line-through',
-    color: '#27AE60', // Dark green for completed task text
+    color: '#27AE60',
   },
   completedAtText: {
     fontSize: 12,
@@ -183,12 +239,12 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   deleteButton: {
-    color: '#E74C3C', // Classic red for delete
+    color: '#E74C3C',
     fontWeight: 'bold',
     fontSize: 18,
   },
   editButton: {
-    color: '#F39C12', // Bright yellow for edit
+    color: '#F39C12',
     fontWeight: 'bold',
     fontSize: 18,
     marginLeft: 10,
