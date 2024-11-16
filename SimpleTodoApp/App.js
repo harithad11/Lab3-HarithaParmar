@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -8,11 +8,50 @@ import {
   TouchableOpacity,
   Animated,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function App() {
   const [task, setTask] = useState(''); // State for task input
   const [tasks, setTasks] = useState([]); // State to store tasks
   const [editingTaskId, setEditingTaskId] = useState(null); // Task ID for the task being edited
+
+  // Load tasks from AsyncStorage when the app loads
+  useEffect(() => {
+    const loadTasks = async () => {
+      try {
+        const savedTasks = await AsyncStorage.getItem('tasks');
+        if (savedTasks) {
+          const parsedTasks = JSON.parse(savedTasks);
+          const tasksWithAnimations = parsedTasks.map(task => ({
+            ...task,
+            slideAnim: new Animated.Value(0),
+            rotateAnim: new Animated.Value(task.rotateAnim || 0),
+          }));
+          setTasks(tasksWithAnimations);
+        }
+      } catch (error) {
+        console.error('Failed to load tasks:', error);
+      }
+    };
+    loadTasks();
+  }, []);
+
+  // Save tasks to AsyncStorage whenever the tasks list changes
+  useEffect(() => {
+    const saveTasks = async () => {
+      try {
+
+        const tasksToSave = tasks.map(task => {
+          const { slideAnim, rotateAnim, ...taskWithoutAnimations } = task;
+          return taskWithoutAnimations;
+        });
+        await AsyncStorage.setItem('tasks', JSON.stringify(tasksToSave));
+      } catch (error) {
+        console.error('Failed to save tasks:', error);
+      }
+    };
+    saveTasks();
+  }, [tasks]);
 
   // Add task with animation states
   const addTask = () => {
@@ -22,8 +61,8 @@ export default function App() {
         text: task,
         completed: false,
         completedAt: null,
-        slideAnim: new Animated.Value(300), // New slide animation for this task
-        rotateAnim: new Animated.Value(0),  // New rotation animation for this task
+        slideAnim: new Animated.Value(300),
+        rotateAnim: new Animated.Value(0),
       };
 
       Animated.spring(newTask.slideAnim, {
@@ -33,7 +72,7 @@ export default function App() {
       }).start();
 
       setTasks([...tasks, newTask]);
-      setTask(''); // Clear the input after adding task
+      setTask('');
     }
   };
 
@@ -60,15 +99,15 @@ export default function App() {
       duration: 300,
       useNativeDriver: true,
     }).start(() => {
-      setTasks(updatedTasks); // Update the state after the animation completes
+      setTasks(updatedTasks);
     });
   };
 
   // Start editing task
   const startEditing = (taskId) => {
     const taskToEdit = tasks.find((task) => task.id === taskId);
-    setEditingTaskId(taskId); // Mark the task as being edited
-    setTask(taskToEdit.text); // Set the input field to the task's current text
+    setEditingTaskId(taskId);
+    setTask(taskToEdit.text);
   };
 
   // Update task after editing
@@ -81,16 +120,16 @@ export default function App() {
         duration: 500,
         useNativeDriver: true,
       }).start(() => {
-        taskToUpdate.rotateAnim.setValue(0); // Reset after rotation
+        taskToUpdate.rotateAnim.setValue(0);
       });
 
       setTasks(tasks.map((item) =>
         item.id === editingTaskId
-          ? { ...item, text: task } // Update task text
+          ? { ...item, text: task }
           : item
       ));
-      setTask(''); // Clear the input field
-      setEditingTaskId(null); // Reset editing state
+      setTask('');
+      setEditingTaskId(null);
     }
   };
 
@@ -102,11 +141,11 @@ export default function App() {
           style={styles.input}
           placeholder="Add or Edit a task"
           value={task}
-          onChangeText={(text) => setTask(text)} // Update task state with input text
+          onChangeText={(text) => setTask(text)}
         />
         <TouchableOpacity
           style={styles.addButton}
-          onPress={editingTaskId ? updateTask : addTask} // If editing, update task; else add new task
+          onPress={editingTaskId ? updateTask : addTask}
         >
           <Text style={styles.addButtonText}>{editingTaskId ? 'Ok' : '+'}</Text>
         </TouchableOpacity>
@@ -123,7 +162,7 @@ export default function App() {
                 {
                   transform: [
                     {
-                      translateX: item.slideAnim, // Use individual slideAnim
+                      translateX: item.slideAnim,
                     },
                     {
                       rotate: item.rotateAnim.interpolate({
@@ -144,7 +183,7 @@ export default function App() {
               <TouchableOpacity onPress={() => deleteTask(item.id)}>
                 <Text style={styles.deleteButton}>X</Text>
               </TouchableOpacity>
-              {/* Edit button for Task C */}
+              {/* Edit button for Task */}
               <TouchableOpacity onPress={() => startEditing(item.id)}>
                 <Text style={styles.editButton}>Edit</Text>
               </TouchableOpacity>
@@ -160,17 +199,20 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#E5E8E8', // Light grey background
     paddingTop: 50,
     paddingHorizontal: 20,
   },
   title: {
     fontSize: 28,
     fontWeight: '600',
-    color: '#2C3E50',
+    color: '#2C3E50', // Classic dark blue-grey color
     marginBottom: 20,
     textAlign: 'center',
     letterSpacing: 1,
+    borderBottomWidth: 2,
+    borderBottomColor: '#BDC3C7', // Light grey border under title
+    paddingBottom: 10,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -184,6 +226,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
     padding: 10,
+    borderWidth: 1,
+    borderColor: '#BDC3C7', // Light grey border around input container
   },
   input: {
     flex: 1,
@@ -193,11 +237,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: 5,
     fontSize: 16,
-    color: '#34495E',
-    backgroundColor: '#ecf0f1',
+    color: '#34495E', // Dark grey color for text
+    backgroundColor: '#F4F6F6', // Very light grey background for input
   },
   addButton: {
-    backgroundColor: '#2980B9',
+    backgroundColor: '#2980B9', // Classic blue
     height: 40,
     width: 40,
     alignItems: 'center',
@@ -208,6 +252,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: '#2980B9', // Border around the button
   },
   addButtonText: {
     color: 'white',
@@ -221,30 +267,34 @@ const styles = StyleSheet.create({
     padding: 12,
     borderBottomColor: '#BDC3C7',
     borderBottomWidth: 1,
+    borderTopWidth: 1,
+    borderTopColor: '#BDC3C7', // Light grey border on top
   },
   taskText: {
     fontSize: 18,
-    color: '#2C3E50',
+    color: '#2C3E50', // Classic dark blue-grey for task text
   },
   completedTask: {
-    backgroundColor: '#D5F5E3',
+    backgroundColor: '#D5F5E3', // Light green background for completed task
+    borderLeftWidth: 5,
+    borderLeftColor: '#27AE60', // Green border to indicate completion
   },
   completedText: {
     textDecorationLine: 'line-through',
-    color: '#27AE60',
+    color: '#27AE60', // Green for completed text
   },
   completedAtText: {
     fontSize: 12,
-    color: '#95A5A6',
+    color: '#95A5A6', // Light grey color for date text
     marginTop: 5,
   },
   deleteButton: {
-    color: '#E74C3C',
+    color: '#E74C3C', // Classic red for delete button
     fontWeight: 'bold',
     fontSize: 18,
   },
   editButton: {
-    color: '#F39C12',
+    color: '#F39C12', // Classic yellow for edit button
     fontWeight: 'bold',
     fontSize: 18,
     marginLeft: 10,
